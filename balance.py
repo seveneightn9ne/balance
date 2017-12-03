@@ -15,7 +15,7 @@ class Balancer(object):
 		self.splitwise = splitwise
 
 		self.startdate = date(year, month, 1)
-		self.enddate = self.startdate.replace(month=(month+1)%12) - timedelta(days=1)
+		self.enddate = self.startdate.replace(month=(month%12)+1) - timedelta(days=1)
 		splitwise.load_expenses(self.startdate, self.enddate)
 		self.transactions = [Transaction().add(e) 
 			for e in bank.iterate(self.startdate) + splitwise.iterate_debts()]
