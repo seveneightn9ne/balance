@@ -82,7 +82,7 @@ class SplitwiseEntry(Entry):
 		self.data = data
 		for user in data["users"]:
 			if user["user_id"] == user_id:
-				self.paid = float(user["paid_share"])
+				self.paid = float(user["paid_share"] or 0)
 				self.owed = abs(float(user["owed_share"]))
 				break
 		else:

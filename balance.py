@@ -5,6 +5,7 @@ from splitwise import Splitwise
 from transaction import Transaction
 import csv
 from datetime import date, timedelta
+import codecs
 
 class Balancer(object):
 	def __init__(self, month, year, bank, budget, splitwise):
@@ -135,7 +136,7 @@ def main(month, year, inputs):
 	with open(inputs["amex"]["file"], "rb") as f:
 		amex_data = csv.reader(f)
 		amex = Amex(inputs["amex"]["user"], amex_data)
-	with open(inputs["moneylover"], "rb") as f:
+	with codecs.open(inputs["moneylover"], "rb", "utf-16") as f:
 		moneylover_data =  csv.reader(f, delimiter=";")
 		moneylover = MoneyLover(moneylover_data)
 	splitwise = Splitwise(inputs["splitwise"]["key"], inputs["splitwise"]["secret"])
