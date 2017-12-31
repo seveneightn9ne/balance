@@ -44,7 +44,7 @@ class Entry(object):
 
 	def keywords(self):
 		k = filter(lambda k: k and k not in Source.method_hints,
-			map(lambda k: k.lower(), self.details().split(" ")))
+			re.split("[ ./-]", self.details().lower()))
 		print k
 		return k
 

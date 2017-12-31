@@ -6,48 +6,61 @@ from pprint import pprint
 
 class MoneyLover(Source):
 	def __init__(self, data):
-		data.next() # skip the header row
-		data = [MoneyLoverEntry(d) for d in data if d[7] == "No" and float(d[2]) < 0]
+		headers = data.next() # skip the header row
+		entries = [MoneyLoverEntry(headers, d) for d in data]
+                entries = [e for e in entries if not (e.exclude_report() and e.amount() >= 0)]
 		self.by_date = defaultdict(list)
 		self.by_keyword = defaultdict(list)
 		self.by_amount = defaultdict(list)
-		for entry in data:
-			d = entry.data
+		for entry in entries:
 			self.by_date[entry.date()].append(entry)
 			self.by_amount[entry.amount_owed()].append(entry)
 			keywords = map(lambda k: k.lower(), entry.details().split(" "))
 			for k in keywords:
 				if k and k not in Source.method_hints and k not in ("and", "the"):
 					self.by_keyword[k].append(entry)
-			
-		super(MoneyLover, self).__init__(data, Source.BUDGET)
+
+		super(MoneyLover, self).__init__(entries, Source.BUDGET)
+
+# android: ID;Note;Amount;Category;Account;Currency;Date;Event;Exclude Report
+# ios    : Id;Date;Category;Amount;Currency;Note;Wallet
+platform = "ios"
 
 class MoneyLoverEntry(Entry):
-	def __init__(self, data):
-		assert len(data) == 8
-		method_hint = data[1].split(" ")[-1]
+	def __init__(self, headers, row):
+		self.row = row
+                self.m = {h.lower(): d for (h,d) in zip(headers, row)}
+
+		method_hint = self.m["note"].split(" ")[-1]
 		if method_hint.lower() in Source.method_hints:
 			self.method_hint = method_hint.lower()
 		else:
 			self.method_hint = None
 		#else:
-		#	print "No method hint given for", data[3], ">" if data[1] else "", data[1] 
-		self.data = data
+		#	print "No method hint given for", row[3], ">" if row[1] else "", row[1] 
 		self.type = Source.BUDGET
 
 	def amount(self):
 		return self.amount_owed()
 
 	def amount_owed(self):
-		return abs(float(self.data[2]))
+		return abs(float(self.m["amount"]))
 
 	def date(self):
-		return datetime.datetime.strptime(self.data[6], "%d/%m/%Y").date()
+		if platform == "android":
+			return datetime.datetime.strptime(self.m["date"], "%d/%m/%Y").date()
+		elif platform == "ios":
+			return datetime.datetime.strptime(self.m["date"], "%Y-%m-%d").date()
+		else:
+			assert false # android of ios?
 
 	def details(self):
-		if self.data[1]:
-			return self.data[1]
-		return self.data[3]
+		if "note" in self.m:
+			return self.m["note"]
+		return self.m["category"]
+
+	def exclude_report(self):
+		return self.m.get("exclude report", "No") != "No"
 
 	def __str__(self):
 		return "B(%s, \"%s\", %s)" % (str(self.date()), self.details(), str(self.amount()))
