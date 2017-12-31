@@ -19,7 +19,7 @@ class MoneyLover(Source):
 			for k in keywords:
 				if k and k not in Source.method_hints and k not in ("and", "the"):
 					self.by_keyword[k].append(entry)
-			
+
 		super(MoneyLover, self).__init__(entries, Source.BUDGET)
 
 # android: ID;Note;Amount;Category;Account;Currency;Date;Event;Exclude Report

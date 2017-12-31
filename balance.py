@@ -48,9 +48,11 @@ class Balancer(object):
 				done.add(entry)
 		self.unreconciled_budget -= done
 
-	def fit(self, transaction, budget_entries, heuristic):
+	def fit(self, i, transaction, budget_entries, heuristic):
 		matches = [b for b in budget_entries if heuristic(transaction, b)]
 		if len(matches) != 1:
+			# print "tx {}".format(transaction)
+			# print "matcher {} failed {} matches".format(i, len(matches))
 			return False
 		transaction.add(matches[0])
 		self.unreconciled_budget.remove(matches[0])
@@ -64,7 +66,7 @@ class Balancer(object):
 			return True
 		return b.method_hint == t.method()
 	def amount(self, t, b):
-		return t.guess_budget_amount() == b.amount()
+		return abs(t.guess_budget_amount() - b.amount()) <= 0.0100001
 	def near_amount(self, t, b):
 		return abs(t.guess_budget_amount() - b.amount()) < 1
 	def date(self, t, b):
@@ -87,10 +89,11 @@ class Balancer(object):
 				lambda t, b: self.hint(t,b) and self.amount(t,b) and self.near_date(t,b),
 				lambda t, b: self.hint(t,b) and self.amount(t,b) and self.keywords(t,b),
 				lambda t, b: self.hint(t,b) and self.near_amount(t,b) and self.date(t,b),
+				lambda t, b: self.hint(t,b) and self.near_amount(t,b) and self.near_date(t,b),
 				# TODO - near_amount
 			]
-			for r in resolvers:
-				if self.fit(transaction, self.unreconciled_budget, r):
+			for (i, r) in enumerate(resolvers):
+				if self.fit(i, transaction, self.unreconciled_budget, r):
 					break
 			else:
 				matches_last = [b for b in self.unreconciled_budget if resolvers[-1](transaction, b)]
@@ -98,7 +101,6 @@ class Balancer(object):
 					print "Many budget entries match the transaction:", transaction
 					for b in matches_last:
 						print "\t", str(b)
-				
 
 	def reflect(self):
 		def by_date(t):
@@ -108,10 +110,12 @@ class Balancer(object):
 		transactions_unresolved = sorted([t for t in self.transactions if not t.resolved()],
 			key=by_date)
 		print "%d resolved transactions." % len(transactions_resolved)
+		# for t in transactions_resolved:
+		# 	print "\t", str(t)
 		if len(transactions_unresolved):
 			print "%d unresolved transactions:" % len(transactions_unresolved)
 			for t in transactions_unresolved:
-				print "\t", str(t) 
+				print "\t", str(t)
 		if len(self.unreconciled_budget):
 			print "%d unreconciled budget entries:" % len(self.unreconciled_budget)
 			for b in sorted(self.unreconciled_budget, key=by_date):
