@@ -6,7 +6,7 @@ class Source(object):
 	BUDGET = 2
 	IOU = 3
 	types = (BANK, BUDGET, IOU)
-	method_hints = ("amex", "cash", "bitcoin", "splitwise")
+	method_hints = ("amex", "cash", "bitcoin", "splitwise", "venmo", "bofa")
 	def __init__(self, data, typ):
 		self.data = data
 		if typ not in Source.types:

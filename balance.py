@@ -17,6 +17,7 @@ class Balancer(object):
 
 		self.startdate = date(year, month, 1)
 		self.enddate = self.startdate.replace(month=(month%12)+1) - timedelta(days=1)
+		self.enddate = self.enddate.replace(year=year)
 		splitwise.load_expenses(self.startdate, self.enddate)
 		self.transactions = [Transaction().add(e) 
 			for e in bank.iterate(self.startdate) + splitwise.iterate_debts()]
@@ -43,7 +44,8 @@ class Balancer(object):
 	def fill_in_budget_source(self):
 		done = set([])
 		for entry in self.unreconciled_budget:
-			if entry.method_hint in ("cash", "bitcoin"):
+			if entry.method_hint in ("cash", "bitcoin", "bofa", "venmo"):
+			        # These methods aren't trackable so we mark them resolved
 				self.transactions.append(Transaction().add(entry))
 				done.add(entry)
 		self.unreconciled_budget -= done
@@ -109,8 +111,9 @@ class Balancer(object):
 			key=by_date)
 		transactions_unresolved = sorted([t for t in self.transactions if not t.resolved()],
 			key=by_date)
-		print "%d resolved transactions." % len(transactions_resolved)
-		# for t in transactions_resolved:
+                print "%d resolved transactions:" % len(transactions_resolved)
+		print "\t(omitted)"
+		#for t in transactions_resolved:
 		# 	print "\t", str(t)
 		if len(transactions_unresolved):
 			print "%d unresolved transactions:" % len(transactions_unresolved)
@@ -127,9 +130,12 @@ def main(month, year, inputs):
 	inputs: {
 		"amex": {
 			"user": "Jessica Kenney",
-			"amex.csv",
+                        "file": "amex.csv",
 		},
-		"moneylover": "moneylover.csv",
+		"moneylover": {
+                        "file": "moneylover.csv",
+                        "platform": "ios",
+                }
 		"splitwise": {
 			"key": "2343abc323434boeuboeu",
 			"secret": "23094eu4eutnh4ibui55",
@@ -140,9 +146,14 @@ def main(month, year, inputs):
 	with open(inputs["amex"]["file"], "rb") as f:
 		amex_data = csv.reader(f)
 		amex = Amex(inputs["amex"]["user"], amex_data)
-	with codecs.open(inputs["moneylover"], "rb", "utf-16") as f:
-		moneylover_data =  csv.reader(f, delimiter=";")
-		moneylover = MoneyLover(moneylover_data)
+        if inputs["moneylover"]["platform"] == "ios":
+                with codecs.open(inputs["moneylover"]["file"], "rb", "utf-16") as f:
+                        moneylover_data =  csv.reader(f, delimiter=";")
+                        moneylover = MoneyLover(moneylover_data, "ios")
+        else:
+                with open(inputs["moneylover"]["file"], "rb") as f:
+                        moneylover_data =  csv.reader(f, delimiter=";")
+                        moneylover = MoneyLover(moneylover_data, "android")
 	splitwise = Splitwise(inputs["splitwise"]["key"], inputs["splitwise"]["secret"])
 	b = Balancer(month, year, amex,  moneylover, splitwise)
 
@@ -163,6 +174,8 @@ if __name__ == "__main__":
                    	help='American Express User to filter for')
 	parser.add_argument('moneylover',
                    	help='MoneyLover transaction export CSV')
+        parser.add_argument('--platform', '-P',
+                        help='Platform ("android" or "ios") the MoneyLover export came from')
 	parser.add_argument('skey',
                    	help='Splitwise API Consumer Key')
 	parser.add_argument('ssecret',
@@ -177,7 +190,10 @@ if __name__ == "__main__":
 			"file": args.amex,
 			"user": args.user,
 		},
-		"moneylover": args.moneylover,
+		"moneylover": {
+		        "file": args.moneylover,
+                        "platform": args.platform,
+                },
 		"splitwise": {
 			"key": args.skey,
 			"secret": args.ssecret,

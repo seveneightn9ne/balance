@@ -5,10 +5,10 @@ from source import Source, Entry
 from pprint import pprint
 
 class MoneyLover(Source):
-	def __init__(self, data):
+	def __init__(self, data, platform):
 		headers = data.next() # skip the header row
-		entries = [MoneyLoverEntry(headers, d) for d in data]
-                entries = [e for e in entries if not (e.exclude_report() and e.amount() >= 0)]
+		entries = [MoneyLoverEntry(platform, headers, d) for d in data]
+                entries = [e for e in entries if not e.exclude_report() and e.amount_raw() < 0]
 		self.by_date = defaultdict(list)
 		self.by_keyword = defaultdict(list)
 		self.by_amount = defaultdict(list)
@@ -24,11 +24,11 @@ class MoneyLover(Source):
 
 # android: ID;Note;Amount;Category;Account;Currency;Date;Event;Exclude Report
 # ios    : Id;Date;Category;Amount;Currency;Note;Wallet
-platform = "ios"
 
 class MoneyLoverEntry(Entry):
-	def __init__(self, headers, row):
+	def __init__(self, platform, headers, row):
 		self.row = row
+		self.platform = platform
                 self.m = {h.lower(): d for (h,d) in zip(headers, row)}
 
 		method_hint = self.m["note"].split(" ")[-1]
@@ -44,18 +44,21 @@ class MoneyLoverEntry(Entry):
 		return self.amount_owed()
 
 	def amount_owed(self):
-		return abs(float(self.m["amount"]))
+		return abs(self.amount_raw())
+
+        def amount_raw(self):
+                return float(self.m["amount"])
 
 	def date(self):
-		if platform == "android":
+		if self.platform == "android":
 			return datetime.datetime.strptime(self.m["date"], "%d/%m/%Y").date()
-		elif platform == "ios":
+		elif self.platform == "ios":
 			return datetime.datetime.strptime(self.m["date"], "%Y-%m-%d").date()
 		else:
-			assert false # android of ios?
+			assert False # android of ios?
 
 	def details(self):
-		if "note" in self.m:
+		if "note" in self.m and self.m["note"]:
 			return self.m["note"]
 		return self.m["category"]
 

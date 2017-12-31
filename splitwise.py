@@ -38,7 +38,7 @@ class Splitwise(Source):
 	def load_expenses(self, startdate, enddate):
 		if self.loaded == startdate:
 			return
-		#print "load", startdate, " to ", enddate
+		print "loading transactions from ", startdate, " to ", enddate
 		params = {
 			'dated_after':  startdate - datetime.timedelta(days=1),
 			'dated_before': enddate + datetime.timedelta(days=1),
